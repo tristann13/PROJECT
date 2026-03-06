@@ -372,6 +372,65 @@
             margin: 10px 0;
         }
 
+        .dtr-person-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            margin: 14px auto;
+            max-width: 900px;
+            padding: 12px 16px;
+            background: #eef2f7;
+            border-radius: 10px;
+        }
+
+        .dtr-person-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            border: 2px solid #0d6efd;
+            border-radius: 8px;
+            background: white;
+            color: #0d6efd;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            font-family: inherit;
+            transition: all 0.15s;
+        }
+
+        .dtr-person-btn:hover {
+            background: #0d6efd;
+            color: white;
+        }
+
+        .dtr-person-btn.active {
+            background: #0d6efd;
+            color: white;
+        }
+
+        .dtr-print-all-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            border: 2px solid #198754;
+            border-radius: 8px;
+            background: white;
+            color: #198754;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            font-family: inherit;
+            transition: all 0.15s;
+        }
+
+        .dtr-print-all-btn:hover {
+            background: #198754;
+            color: white;
+        }
+
         .btn-dtr {
             background: #d63384;
         }
@@ -587,7 +646,12 @@
             .generate-section,
             .modal-overlay,
             .alert-banner,
-            .dtr-view-controls {
+            .dtr-view-controls,
+            .dtr-person-bar {
+                display: none !important;
+            }
+
+            .dtr-page.print-hidden {
                 display: none !important;
             }
 
@@ -1307,14 +1371,21 @@
 
             let html = `<div class="dtr-view-controls">
                 <button class="btn-back" onclick="backToLogBook()">⬅ Back to Log Book</button>
-                <button class="btn-print" onclick="window.print()">🖨 Print DTR</button>
             </div>`;
 
-            names.forEach(personName => {
+            // Person print buttons bar
+            html += `<div class="dtr-person-bar">`;
+            names.forEach((personName, idx) => {
+                html += `<button class="dtr-person-btn" onclick="printPersonDTR(${idx})" title="Print ${personName}'s DTR only">🖨 ${personName}</button>`;
+            });
+            html += `<button class="dtr-print-all-btn" onclick="printAllDTR()">🖨 Print All</button>`;
+            html += `</div>`;
+
+            names.forEach((personName, idx) => {
                 ranges.forEach(range => {
                     const singleSheet = buildDTRSheet(personName, year, month, range, personTimes[personName], holidayByDay, lastDay);
                     // Wrap two identical copies in one page
-                    html += `<div class="dtr-page">${singleSheet}${singleSheet}</div>`;
+                    html += `<div class="dtr-page" data-person="${idx}">${singleSheet}${singleSheet}</div>`;
                 });
             });
 
@@ -1424,6 +1495,29 @@
             if (!timeStr || timeStr === '-') return '';
             // Remove AM/PM and just show the time like in the image
             return timeStr.replace(/ AM| PM/gi, '');
+        }
+
+        function printPersonDTR(personIndex) {
+            // Mark all pages as print-hidden, then unhide only the selected person's pages
+            document.querySelectorAll('.dtr-page').forEach(page => {
+                if (page.dataset.person === String(personIndex)) {
+                    page.classList.remove('print-hidden');
+                } else {
+                    page.classList.add('print-hidden');
+                }
+            });
+            window.print();
+            // Restore all pages after printing
+            document.querySelectorAll('.dtr-page').forEach(page => {
+                page.classList.remove('print-hidden');
+            });
+        }
+
+        function printAllDTR() {
+            document.querySelectorAll('.dtr-page').forEach(page => {
+                page.classList.remove('print-hidden');
+            });
+            window.print();
         }
 
         function backToLogBook() {
