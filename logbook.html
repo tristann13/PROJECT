@@ -1,0 +1,1455 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Log Book</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Caveat', cursive;
+            font-size: 18px;
+            background: #f4f6f9;
+            padding: 20px;
+            margin: 0;
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 6px;
+        }
+
+        /* TOP CONTROLS */
+        .controls {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        button {
+            padding: 8px 16px;
+            margin: 4px;
+            border: none;
+            border-radius: 6px;
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+            font-family: 'Caveat', cursive;
+            font-size: 17px;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            filter: brightness(0.88);
+        }
+
+        button.btn-holiday {
+            background: #e67e22;
+        }
+
+        button.btn-print {
+            background: #28a745;
+        }
+
+        button.btn-danger {
+            background: #dc3545;
+            font-size: 14px;
+            padding: 4px 10px;
+        }
+
+        button.btn-add {
+            background: #17a2b8;
+        }
+
+        button.btn-secondary {
+            background: #6c757d;
+        }
+
+        button.btn-generate {
+            background: #6f42c1;
+            font-size: 18px;
+            padding: 10px 22px;
+        }
+
+        button.btn-generate:disabled {
+            background: #aaa;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        /* SAVED MONTHS BAR */
+        .saved-bar {
+            background: #fff;
+            border: 1px solid #dde;
+            border-radius: 10px;
+            padding: 12px 18px;
+            margin: 10px auto 18px auto;
+            max-width: 900px;
+        }
+
+        .saved-bar h4 {
+            margin: 0 0 8px 0;
+            font-size: 16px;
+            color: #555;
+            font-family: 'Caveat', cursive;
+        }
+
+        .saved-months-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .month-chip {
+            background: #e8f0fe;
+            border: 1px solid #b3c6f7;
+            border-radius: 20px;
+            padding: 5px 14px;
+            font-family: 'Caveat', cursive;
+            font-size: 16px;
+            cursor: pointer;
+            color: #1a56db;
+            transition: background 0.15s;
+        }
+
+        .month-chip:hover {
+            background: #c5d8ff;
+        }
+
+        .month-chip.active {
+            background: #1a56db;
+            color: white;
+            border-color: #1a56db;
+        }
+
+        .month-chip-delete {
+            display: inline-block;
+            margin-left: 6px;
+            color: #c00;
+            font-weight: bold;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .month-chip-delete:hover {
+            color: #900;
+        }
+
+        .no-saved {
+            color: #bbb;
+            font-size: 15px;
+            font-family: 'Caveat', cursive;
+        }
+
+        /* GENERATE SECTION */
+        .generate-section {
+            text-align: center;
+            margin: 14px 0 10px 0;
+        }
+
+        .generate-section .gen-label {
+            font-size: 17px;
+            color: #555;
+            margin-bottom: 8px;
+        }
+
+        .gen-selects {
+            display: inline-flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .gen-selects select {
+            font-family: 'Caveat', cursive;
+            font-size: 17px;
+            padding: 7px 12px;
+            border: 1px solid #ccc;
+            border-radius: 7px;
+            background: white;
+        }
+
+        /* DTR TABLE */
+        #monthTitle {
+            text-align: center;
+            font-size: 26px;
+            margin: 10px 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            margin-bottom: 28px;
+        }
+
+        th,
+        td {
+            border: 1px solid #000;
+            padding: 8px;
+            text-align: center;
+        }
+
+        th {
+            background: #e9ecef;
+        }
+
+        .handwritten {
+            font-family: 'Caveat', cursive;
+            font-size: 17px;
+            color: #1a1a2e;
+        }
+
+        td.sig-cell {
+            min-width: 120px;
+            height: 38px;
+        }
+
+        .holiday-row {
+            background-color: #ffe6e6;
+            color: red;
+            font-weight: bold;
+        }
+
+        .day-header {
+            background: #343a40;
+            color: white;
+            padding: 8px 12px;
+            margin-top: 20px;
+            margin-bottom: 0;
+            font-size: 15px;
+            border-radius: 5px 5px 0 0;
+        }
+
+        /* MODAL */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 12px;
+            padding: 28px 32px;
+            width: 500px;
+            max-width: 95vw;
+            max-height: 85vh;
+            overflow-y: auto;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+        }
+
+        .modal h3 {
+            margin-top: 0;
+            font-size: 24px;
+            color: #343a40;
+            border-bottom: 2px solid #e9ecef;
+            padding-bottom: 10px;
+        }
+
+        .modal p.subtitle {
+            color: #888;
+            font-size: 15px;
+            margin-top: 0;
+        }
+
+        .holiday-list {
+            margin: 14px 0;
+            max-height: 280px;
+            overflow-y: auto;
+        }
+
+        .holiday-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 12px;
+            margin-bottom: 7px;
+            background: #fff8f0;
+            border: 1px solid #f0c080;
+            border-radius: 8px;
+            gap: 10px;
+        }
+
+        .holiday-item .hinfo {
+            text-align: left;
+        }
+
+        .holiday-item .hinfo strong {
+            font-size: 17px;
+            display: block;
+        }
+
+        .holiday-item .hinfo small {
+            color: #999;
+            font-size: 14px;
+        }
+
+        .weekend-warn {
+            color: #e67e22;
+            font-size: 13px;
+        }
+
+        .add-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 14px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .add-row input {
+            font-family: 'Caveat', cursive;
+            font-size: 16px;
+            padding: 7px 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            flex: 1;
+            min-width: 110px;
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            margin-top: 18px;
+            border-top: 1px solid #e9ecef;
+            padding-top: 14px;
+        }
+
+        .empty-msg {
+            text-align: center;
+            color: #bbb;
+            font-size: 16px;
+            padding: 20px 0;
+        }
+
+        /* ALERT BANNER */
+        .alert-banner {
+            text-align: center;
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin: 10px auto;
+            max-width: 700px;
+            font-size: 17px;
+        }
+
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .alert-warn {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffc107;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        /* DTR INDIVIDUAL STYLES */
+        .dtr-view-controls {
+            text-align: center;
+            margin: 10px 0;
+        }
+
+        .btn-dtr {
+            background: #d63384;
+        }
+
+        .btn-back {
+            background: #6c757d;
+        }
+
+        /* Page wrapper: 2 copies side by side on LEGAL portrait */
+        .dtr-page {
+            display: flex;
+            gap: 0;
+            width: 216mm;
+            min-height: 343mm;
+            max-width: 100%;
+            margin: 0 auto 20px auto;
+            background: white;
+            border: 1px solid #ccc;
+            page-break-after: always;
+        }
+
+        .dtr-page:last-child {
+            page-break-after: auto;
+        }
+
+        .dtr-sheet {
+            width: 50%;
+            padding: 8mm 6mm;
+            font-family: 'Times New Roman', Times, serif;
+            font-size: 9px;
+            border-right: 1px dashed #aaa;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .dtr-sheet:last-child {
+            border-right: none;
+        }
+
+        .dtr-sheet .dtr-title {
+            text-align: center;
+            font-size: 14px;
+            font-weight: bold;
+            font-family: 'Times New Roman', Times, serif;
+            margin: 0;
+            letter-spacing: 2px;
+        }
+
+        .dtr-sheet .dtr-deco {
+            text-align: center;
+            font-size: 8px;
+            color: #555;
+            margin: 2px 0 8px 0;
+        }
+
+        .dtr-sheet .dtr-name {
+            text-align: center;
+            font-size: 14px;
+            font-weight: bold;
+            font-family: 'Times New Roman', Times, serif;
+            margin: 6px 0 0 0;
+            border-bottom: 1px solid #000;
+            display: inline-block;
+            padding: 0 18px 2px 18px;
+        }
+
+        .dtr-sheet .dtr-name-wrap {
+            text-align: center;
+        }
+
+        .dtr-sheet .dtr-name-label {
+            text-align: center;
+            font-size: 8px;
+            font-style: italic;
+            margin: 1px 0 6px 0;
+        }
+
+        .dtr-sheet .dtr-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin: 5px 0;
+            font-size: 9px;
+            font-style: italic;
+        }
+
+        .dtr-sheet .dtr-meta-left {
+            display: flex;
+            gap: 4px;
+            align-items: baseline;
+        }
+
+        .dtr-sheet .dtr-meta-month {
+            font-weight: bold;
+            font-style: normal;
+            font-size: 10px;
+            text-decoration: underline;
+        }
+
+        .dtr-sheet .dtr-office-hours {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            font-style: italic;
+            margin: 3px 0 6px 0;
+        }
+
+        .dtr-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 9px;
+            font-family: 'Times New Roman', Times, serif;
+        }
+
+        .dtr-table th,
+        .dtr-table td {
+            border: 1px solid #000;
+            padding: 2px 3px;
+            text-align: center;
+            height: 17px;
+        }
+
+        .dtr-table th {
+            background: #f0f0f0;
+            font-size: 8px;
+            font-weight: bold;
+        }
+
+        .dtr-table .day-col {
+            width: 22px;
+        }
+
+        .dtr-table .time-col {
+            width: 40px;
+        }
+
+        .dtr-table .under-col {
+            width: 30px;
+        }
+
+        .dtr-table .weekend-label,
+        .dtr-table .holiday-label {
+            font-weight: bold;
+            text-align: center;
+            font-size: 12px;
+            letter-spacing: 2px;
+        }
+
+        .dtr-table .holiday-label {
+            color: red;
+        }
+
+        .dtr-table .handwritten-dtr {
+            font-size: 13px;
+        }
+
+        .dtr-sheet .dtr-total-row td {
+            font-weight: bold;
+            height: 17px;
+        }
+
+        .dtr-sheet .dtr-certification {
+            font-size: 9px;
+            font-style: italic;
+            margin: 12px 0 5px 0;
+            line-height: 1.5;
+            text-align: match-parent;
+        }
+
+        .dtr-sheet .extra-space {
+            font-size: 12px;
+            border-top: 1px solid #000;
+            display: inline-block;
+            padding-top: 3px;
+            padding-left: 14px;
+            padding-right: 14px;
+        }
+
+        .dtr-sheet .dtr-verified {
+            font-size: 8px;
+            font-weight: bold;
+            font-style: italic;
+            margin: 8px 0 3px 0;
+            text-align: left;
+        }
+
+
+        .dtr-sheet .dtr-incharge {
+            text-align: center;
+            margin-top: 50px;
+            padding-top: 5px;
+            font-size: 11px;
+        }
+
+        .dtr-sheet .dtr-incharge strong {
+            font-size: 12px;
+            border-top: 1px solid #000;
+            display: inline-block;
+            padding-top: 3px;
+            padding-left: 14px;
+            padding-right: 14px;
+        }
+
+        .dtr-sheet .dtr-incharge em {
+            font-size: 9px;
+            display: block;
+        }
+
+        @media print {
+
+            .controls,
+            .saved-bar,
+            .generate-section,
+            .modal-overlay,
+            .alert-banner,
+            .dtr-view-controls {
+                display: none !important;
+            }
+
+            @page {
+                size: legal portrait;
+                margin: 4mm;
+            }
+
+            body {
+                background: white;
+                padding: 0;
+                margin: 0;
+            }
+
+            .dtr-page {
+                border: none;
+                margin: 0;
+                width: 100%;
+                min-height: auto;
+                height: 100vh;
+                box-shadow: none;
+            }
+
+            .dtr-sheet {
+                border-right: 1px dashed #999;
+                padding: 6mm 5mm;
+            }
+
+            .dtr-sheet:last-child {
+                border-right: none;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="controls">
+        <button class="btn-holiday" onclick="openHolidayModal()">🗓 Manage Holidays</button>
+        <button class="btn-dtr" onclick="generateIndividualDTR()">📋 Generate Individual DTR</button>
+        <button class="btn-print" onclick="window.print()">🖨 Print</button>
+        <button class="btn-secondary" onclick="exportDatabase()">💾 Export Database</button>
+        <button class="btn-secondary" onclick="document.getElementById('importDbFile').click()">📂 Import
+            Database</button>
+        <input type="file" id="importDbFile" accept=".sqlite,.db" style="display:none;"
+            onchange="importDatabase(event)">
+    </div>
+
+    <!-- Saved Months -->
+    <div class="saved-bar">
+        <h4>📁 Saved Log Book Records</h4>
+        <div class="saved-months-list" id="savedMonthsList">
+            <span class="no-saved">No records saved yet.</span>
+        </div>
+    </div>
+
+    <!-- Generate New -->
+    <div class="generate-section">
+        <div class="gen-label">Generate a new Log Book for:</div>
+        <div class="gen-selects">
+            <select id="genMonth">
+                <option value="0">January</option>
+                <option value="1">February</option>
+                <option value="2">March</option>
+                <option value="3">April</option>
+                <option value="4">May</option>
+                <option value="5">June</option>
+                <option value="6">July</option>
+                <option value="7">August</option>
+                <option value="8">September</option>
+                <option value="9">October</option>
+                <option value="10">November</option>
+                <option value="11">December</option>
+            </select>
+            <select id="genYear"></select>
+            <button class="btn-generate" id="generateBtn" onclick="tryGenerate()">⚡ Generate</button>
+        </div>
+        <div id="genAlert"></div>
+    </div>
+
+    <h3 id="monthTitle"></h3>
+    <div id="dtrContainer"></div>
+    <div id="dtrIndividualContainer"></div>
+
+    <!-- Holiday Modal -->
+    <div class="modal-overlay" id="holidayModal">
+        <div class="modal">
+            <h3>🗓 Holiday Settings</h3>
+            <p class="subtitle">Add or remove holidays. Only weekday dates (Mon–Fri) will appear highlighted in the DTR.
+            </p>
+            <div class="holiday-list" id="holidayList"></div>
+            <div class="add-row">
+                <input type="date" id="newHolidayDate" />
+                <input type="text" id="newHolidayName" placeholder="e.g. Labor Day" />
+                <button class="btn-add" onclick="addHoliday()">+ Add</button>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeHolidayModal()">Close</button>
+                <button onclick="saveHolidaysAndClose()">✔ Save</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // =====================
+        // DATA
+        // =====================
+        const names = [
+            "RUEL PAULAN", "MARC TRISTANN GEQUILLANA", "FAYE AMANDA ABIERA",
+            "LORENZO GABONADA III", "GEROME PROSIA", "RIC JOSEPH VERGARA",
+            "ERWIN PAREL", "ERNESTO ABELLA", "FELIX BALUCA"
+        ];
+
+        const monthNames = [
+            "JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE",
+            "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"
+        ];
+        const monthNamesShort = [
+            "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+        ];
+
+        // Load holidays from storage or use defaults
+        function loadHolidays() {
+            try {
+                const stored = localStorage.getItem('dtr_holidays');
+                if (stored) return JSON.parse(stored);
+            } catch (e) { }
+            return [
+                { date: "2026-01-01", name: "New Year's Day" },
+                { date: "2026-04-09", name: "Araw ng Kagitingan" },
+                { date: "2026-12-25", name: "Christmas Day" }
+            ];
+        }
+        function saveHolidaysToStorage() {
+            try { localStorage.setItem('dtr_holidays', JSON.stringify(holidays)); } catch (e) { }
+        }
+
+        let holidays = loadHolidays();
+
+        // =====================
+        // DATABASE HELPERS (SQLite via SQL.js)
+        // =====================
+        function storageKey(year, month) { return `dtr_${year}_${String(month + 1).padStart(2, '0')}`; }
+
+        const IDB_NAME = "LogBookSQLDB";
+        const IDB_VERSION = 1;
+        const IDB_STORE = "sqliteFile";
+        let _idbPromise = null;
+        let sqliteDb = null;
+
+        function openIDB() {
+            if (_idbPromise) return _idbPromise;
+            _idbPromise = new Promise((resolve, reject) => {
+                const request = indexedDB.open(IDB_NAME, IDB_VERSION);
+                request.onupgradeneeded = (event) => {
+                    const db = event.target.result;
+                    if (!db.objectStoreNames.contains(IDB_STORE)) {
+                        db.createObjectStore(IDB_STORE);
+                    }
+                };
+                request.onsuccess = (event) => resolve(event.target.result);
+                request.onerror = (event) => reject(event.target.error);
+            });
+            return _idbPromise;
+        }
+
+        async function loadSqliteBinary() {
+            const db = await openIDB();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction([IDB_STORE], "readonly");
+                const store = tx.objectStore(IDB_STORE);
+                const req = store.get("dbFile");
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => reject(req.error);
+            });
+        }
+
+        async function saveSqliteBinary() {
+            if (!sqliteDb) return;
+            const data = sqliteDb.export();
+            const db = await openIDB();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction([IDB_STORE], "readwrite");
+                const store = tx.objectStore(IDB_STORE);
+                const req = store.put(data, "dbFile");
+                req.onsuccess = () => resolve();
+                req.onerror = () => reject(req.error);
+            });
+        }
+
+        async function initSQLite() {
+            const config = {
+                locateFile: filename => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${filename}`
+            };
+            window.SQL = await window.initSqlJs(config);
+            const savedBinary = await loadSqliteBinary();
+            if (savedBinary) {
+                sqliteDb = new window.SQL.Database(savedBinary);
+            } else {
+                sqliteDb = new window.SQL.Database();
+                sqliteDb.run(`CREATE TABLE IF NOT EXISTS months (year INTEGER, month INTEGER, data TEXT, PRIMARY KEY (year, month));`);
+            }
+        }
+
+        async function getSavedMonths() {
+            const results = [];
+            const stmt = sqliteDb.prepare("SELECT year, month FROM months ORDER BY year ASC, month ASC;");
+            while (stmt.step()) {
+                const row = stmt.getAsObject();
+                results.push({ year: row.year, month: row.month });
+            }
+            stmt.free();
+            return results;
+        }
+
+        async function isMonthSaved(year, month) {
+            const stmt = sqliteDb.prepare("SELECT 1 FROM months WHERE year = :year AND month = :month;");
+            const result = stmt.getAsObject({ ':year': year, ':month': month });
+            stmt.free();
+            return result && result['1'] === 1;
+        }
+
+        async function saveMonthData(year, month, data) {
+            sqliteDb.run("INSERT OR REPLACE INTO months (year, month, data) VALUES (?, ?, ?)", [year, month, JSON.stringify(data)]);
+            await saveSqliteBinary();
+        }
+
+        async function loadMonthData(year, month) {
+            const stmt = sqliteDb.prepare("SELECT data FROM months WHERE year = :year AND month = :month;");
+            const result = stmt.getAsObject({ ':year': year, ':month': month });
+            stmt.free();
+            if (result.data) {
+                return JSON.parse(result.data);
+            }
+            return null;
+        }
+
+        async function deleteMonthData(year, month) {
+            sqliteDb.run("DELETE FROM months WHERE year = ? AND month = ?", [year, month]);
+            await saveSqliteBinary();
+        }
+
+        async function migrateToSQLite() {
+            let migrated = false;
+            // 1. Migrate from old LocalStorage
+            for (let i = 0; i < localStorage.length; i++) {
+                const k = localStorage.key(i);
+                if (k && k.startsWith('dtr_') && k !== 'dtr_holidays') {
+                    const parts = k.split('_');
+                    if (parts.length === 3) {
+                        const year = parseInt(parts[1]);
+                        const month = parseInt(parts[2]) - 1;
+                        const dataStr = localStorage.getItem(k);
+                        if (dataStr) {
+                            try {
+                                sqliteDb.run("INSERT OR IGNORE INTO months (year, month, data) VALUES (?, ?, ?)", [year, month, dataStr]);
+                                migrated = true;
+                                localStorage.removeItem(k);
+                                i--; // Adjust index
+                            } catch (e) { }
+                        }
+                    }
+                }
+            }
+
+            // 2. Migrate from old IndexedDB ("LogBookDB") if present
+            try {
+                const oldDb = await new Promise((resolve, reject) => {
+                    const req = indexedDB.open("LogBookDB", 1);
+                    req.onsuccess = e => resolve(e.target.result);
+                    req.onerror = e => reject(e.target.error);
+                });
+
+                if (oldDb.objectStoreNames.contains("months")) {
+                    const tx = oldDb.transaction(["months"], "readonly");
+                    const store = tx.objectStore("months");
+                    const req = store.getAll();
+                    await new Promise(resolve => {
+                        req.onsuccess = () => {
+                            req.result.forEach(item => {
+                                const parts = item.id.split('_');
+                                if (parts.length === 3) {
+                                    const year = parseInt(parts[1]);
+                                    const month = parseInt(parts[2]) - 1;
+                                    sqliteDb.run("INSERT OR IGNORE INTO months (year, month, data) VALUES (?, ?, ?)", [year, month, JSON.stringify(item.data)]);
+                                    migrated = true;
+                                }
+                            });
+                            resolve();
+                        };
+                    });
+
+                    // Clear the old store
+                    const delTx = oldDb.transaction(["months"], "readwrite");
+                    delTx.objectStore("months").clear();
+                }
+                oldDb.close();
+            } catch (e) { }
+
+            if (migrated) {
+                await saveSqliteBinary();
+            }
+        }
+
+        // =====================
+        // IMPORT / EXPORT DATABASE
+        // =====================
+        function exportDatabase() {
+            if (!sqliteDb) {
+                alert("Database not ready.");
+                return;
+            }
+            const data = sqliteDb.export();
+            const blob = new Blob([data], { type: 'application/octet-stream' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            // Build filename from the currently viewed month and year
+            const titleText = document.getElementById('monthTitle').textContent.trim();
+            let fileName = 'LogBook.sqlite';
+            if (titleText) {
+                // titleText is like "MARCH 2026" — convert to "March 2026"
+                const parts = titleText.split(' ');
+                if (parts.length === 2) {
+                    const monthPart = parts[0].charAt(0) + parts[0].slice(1).toLowerCase();
+                    fileName = `${monthPart} ${parts[1]}.sqlite`;
+                }
+            }
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function importDatabase(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async function (e) {
+                try {
+                    const uInt8Array = new Uint8Array(e.target.result);
+                    sqliteDb = new window.SQL.Database(uInt8Array);
+                    await saveSqliteBinary();
+
+                    document.getElementById('importDbFile').value = '';
+                    alert("Database imported successfully! Refreshing...");
+                    window.location.reload();
+                } catch (err) {
+                    alert("Error importing database. The file might not be a valid SQLite database.");
+                    console.error(err);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // =====================
+        // SEEDED RNG
+        // =====================
+        function seededRandom(seed) {
+            // Mix the seed thoroughly so similar seeds (consecutive dates) diverge
+            let s = seed | 0;
+            s = ((s >>> 16) ^ s) * 0x45d9f3b | 0;
+            s = ((s >>> 16) ^ s) * 0x45d9f3b | 0;
+            s = (s >>> 16) ^ s;
+            return function () {
+                s = (s * 1664525 + 1013904223) & 0xffffffff;
+                return (s >>> 0) / 0xffffffff;
+            };
+        }
+        function seededShuffle(arr, seed) {
+            const rng = seededRandom(seed);
+            const a = [...arr];
+            for (let i = a.length - 1; i > 0; i--) {
+                const j = Math.floor(rng() * (i + 1));
+                [a[i], a[j]] = [a[j], a[i]];
+            }
+            return a;
+        }
+        // Pick N unique random minutes from [min, max], returned sorted ascending
+        function pickUniqueMinutes(count, min, max, seed) {
+            const rng = seededRandom(seed);
+            const available = [];
+            for (let i = min; i <= max; i++) available.push(i);
+            const result = [];
+            for (let i = 0; i < count && available.length > 0; i++) {
+                const idx = Math.floor(rng() * available.length);
+                result.push(available[idx]);
+                available.splice(idx, 1);
+            }
+            return result.sort((a, b) => a - b);
+        }
+        function formatMinute(hour, minute, period) {
+            const fm = minute < 10 ? "0" + minute : "" + minute;
+            return hour + ":" + fm + " " + period;
+        }
+        function formatDateISO(date) {
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+        function formatDateDisplay(date) {
+            return date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).toUpperCase();
+        }
+
+        // =====================
+        // GENERATE DTR DATA
+        // =====================
+        function buildMonthData(year, month) {
+            const lastDay = new Date(year, month + 1, 0).getDate();
+            const days = [];
+
+            for (let day = 1; day <= lastDay; day++) {
+                let date = new Date(year, month, day);
+                let dayOfWeek = date.getDay();
+                if (dayOfWeek === 0 || dayOfWeek === 6) continue;
+
+                let isoDate = formatDateISO(date);
+                let holidayObj = holidays.find(h => h.date === isoDate);
+                let isHoliday = !!holidayObj;
+
+                const dateSeed = year * 10000 + (month + 1) * 100 + day;
+                const shuffledNames = seededShuffle(names, dateSeed);
+
+                let rows;
+                if (isHoliday) {
+                    rows = shuffledNames.map(name => ({
+                        name, morningIn: "-", morningOut: "-", afternoonIn: "-", afternoonOut: "-", holiday: true
+                    }));
+                } else {
+                    const n = shuffledNames.length;
+
+                    // Pick N unique minutes per column (all sorted ascending)
+                    const mInMins = pickUniqueMinutes(n, 45, 58, dateSeed ^ 0xDEAD);   // 7:45–7:58 AM
+                    const mOutMins = pickUniqueMinutes(n, 1, 30, dateSeed ^ 0xBEEF);   // 12:01–12:30 PM
+                    const aInMins = pickUniqueMinutes(n, 41, 57, dateSeed ^ 0xCAFE);   // 12:41–12:57 PM
+                    const aOutMins = pickUniqueMinutes(n, 2, 30, dateSeed ^ 0xF00D);   // 5:02–5:30 PM
+
+                    rows = shuffledNames.map((name, index) => ({
+                        name,
+                        morningIn: formatMinute(7, mInMins[index], "AM"),
+                        morningOut: formatMinute(12, mOutMins[index], "PM"),
+                        afternoonIn: formatMinute(12, aInMins[index], "PM"),
+                        afternoonOut: formatMinute(5, aOutMins[index], "PM"),
+                        holiday: false
+                    }));
+                }
+
+                days.push({
+                    isoDate,
+                    label: formatDateDisplay(date),
+                    holidayName: isHoliday ? holidayObj.name : null,
+                    rows
+                });
+            }
+            return { year, month, generatedAt: new Date().toISOString(), days };
+        }
+
+        // =====================
+        // RENDER DTR FROM DATA
+        // =====================
+        function renderMonthData(data) {
+            const container = document.getElementById("dtrContainer");
+            container.innerHTML = "";
+            document.getElementById("monthTitle").textContent = monthNames[data.month] + " " + data.year;
+
+            data.days.forEach(day => {
+                const header = document.createElement("p");
+                header.className = "day-header";
+                header.textContent = day.label + (day.holidayName ? `   ★ ${day.holidayName.toUpperCase()}` : "");
+                container.appendChild(header);
+
+                const table = document.createElement("table");
+                let tbody = `<thead><tr><th>#</th><th>Name</th><th>Morning In</th><th>Morning Out</th><th>Afternoon In</th><th>Afternoon Out</th><th>Signature</th></tr></thead><tbody>`;
+
+                day.rows.forEach((r, i) => {
+                    if (r.holiday) {
+                        tbody += `<tr class="holiday-row">
+                    <td>${i + 1}</td>
+                    <td style="text-align:left;padding-left:10px;">${r.name}</td>
+                    <td>-</td><td>-</td><td>-</td><td>-</td>
+                    <td class="sig-cell"></td></tr>`;
+                    } else {
+                        tbody += `<tr>
+                    <td>${i + 1}</td>
+                    <td style="text-align:left;padding-left:10px;">${r.name}</td>
+                    <td class="handwritten">${r.morningIn}</td>
+                    <td class="handwritten">${r.morningOut}</td>
+                    <td class="handwritten">${r.afternoonIn}</td>
+                    <td class="handwritten">${r.afternoonOut}</td>
+                    <td class="sig-cell"></td></tr>`;
+                    }
+                });
+                tbody += `</tbody>`;
+                table.innerHTML = tbody;
+                container.appendChild(table);
+            });
+        }
+
+        // =====================
+        // TRY GENERATE
+        // =====================
+        async function tryGenerate() {
+            const year = parseInt(document.getElementById("genYear").value);
+            const month = parseInt(document.getElementById("genMonth").value);
+            const alertDiv = document.getElementById("genAlert");
+
+            if (await isMonthSaved(year, month)) {
+                alertDiv.innerHTML = `<div class="alert-banner alert-warn">⚠ ${monthNames[month]} ${year} has already been generated and saved. Load it from the saved records above.</div>`;
+                return;
+            }
+
+            const data = buildMonthData(year, month);
+            await saveMonthData(year, month, data);
+            renderMonthData(data);
+            await renderSavedMonths();
+            setActiveChip(year, month);
+            alertDiv.innerHTML = `<div class="alert-banner alert-success">✔ ${monthNames[month]} ${year} generated and saved successfully!</div>`;
+            setTimeout(() => { alertDiv.innerHTML = ""; }, 4000);
+        }
+
+        // =====================
+        // LOAD SAVED MONTH
+        // =====================
+        async function loadSavedMonth(year, month) {
+            const data = await loadMonthData(year, month);
+            if (!data) return;
+            renderMonthData(data);
+            setActiveChip(year, month);
+            document.getElementById("genAlert").innerHTML = "";
+            document.getElementById("monthTitle").scrollIntoView({ behavior: 'smooth' });
+        }
+
+        async function deleteSavedMonth(year, month, e) {
+            e.stopPropagation();
+            if (!confirm(`Delete saved DTR for ${monthNames[month]} ${year}? This cannot be undone.`)) return;
+            await deleteMonthData(year, month);
+            await renderSavedMonths();
+            // If currently viewing deleted month, clear view
+            if (document.getElementById("monthTitle").textContent === monthNames[month] + " " + year) {
+                document.getElementById("monthTitle").textContent = "";
+                document.getElementById("dtrContainer").innerHTML = "";
+            }
+        }
+
+        // =====================
+        // SAVED MONTHS BAR
+        // =====================
+        let activeChipKey = null;
+        function setActiveChip(year, month) {
+            activeChipKey = storageKey(year, month);
+            document.querySelectorAll('.month-chip').forEach(c => {
+                c.classList.toggle('active', c.dataset.key === activeChipKey);
+            });
+        }
+
+        async function renderSavedMonths() {
+            const list = document.getElementById("savedMonthsList");
+            const saved = await getSavedMonths();
+            if (saved.length === 0) {
+                list.innerHTML = `<span class="no-saved">No records saved yet. Generate a month below.</span>`;
+                return;
+            }
+            list.innerHTML = saved.map(s => {
+                const label = `${monthNamesShort[s.month]} ${s.year}`;
+                const isActive = storageKey(s.year, s.month) === activeChipKey;
+                return `<span class="month-chip ${isActive ? 'active' : ''}" data-key="${storageKey(s.year, s.month)}"
+            onclick="loadSavedMonth(${s.year}, ${s.month})">
+            ${label}
+            <span class="month-chip-delete" onclick="deleteSavedMonth(${s.year}, ${s.month}, event)" title="Delete">✕</span>
+        </span>`;
+            }).join("");
+        }
+
+        // =====================
+        // YEAR/MONTH SELECTORS
+        // =====================
+        function initSelectors() {
+            const today = new Date();
+            const yearSel = document.getElementById("genYear");
+            for (let y = today.getFullYear(); y <= today.getFullYear() + 2; y++) {
+                const o = document.createElement("option");
+                o.value = y; o.textContent = y;
+                yearSel.appendChild(o);
+            }
+            document.getElementById("genMonth").value = today.getMonth();
+        }
+
+        // =====================
+        // HOLIDAY MODAL
+        // =====================
+        function openHolidayModal() { renderHolidayList(); document.getElementById("holidayModal").classList.add("active"); }
+        function closeHolidayModal() { document.getElementById("holidayModal").classList.remove("active"); }
+        function saveHolidaysAndClose() { saveHolidaysToStorage(); closeHolidayModal(); }
+
+        function renderHolidayList() {
+            const list = document.getElementById("holidayList");
+            if (holidays.length === 0) { list.innerHTML = `<div class="empty-msg">No holidays added yet.</div>`; return; }
+            const sorted = [...holidays].sort((a, b) => a.date.localeCompare(b.date));
+            list.innerHTML = sorted.map(h => {
+                const d = new Date(h.date + "T00:00:00");
+                const dayName = d.toLocaleDateString('en-US', { weekday: 'long' });
+                const display = d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+                const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+                const note = isWeekend ? `<span class="weekend-warn">⚠ Weekend</span>` : '';
+                return `<div class="holiday-item">
+            <div class="hinfo">
+                <strong>${h.name}</strong>
+                <small>${dayName}, ${display} ${note}</small>
+            </div>
+            <button class="btn-danger" onclick="removeHoliday('${h.date}')">✕</button>
+        </div>`;
+            }).join("");
+        }
+        function addHoliday() {
+            const dateVal = document.getElementById("newHolidayDate").value;
+            const nameVal = document.getElementById("newHolidayName").value.trim();
+            if (!dateVal) { alert("Please select a date."); return; }
+            if (!nameVal) { alert("Please enter a holiday name."); return; }
+            if (holidays.find(h => h.date === dateVal)) { alert("Date already added."); return; }
+            holidays.push({ date: dateVal, name: nameVal });
+            document.getElementById("newHolidayDate").value = "";
+            document.getElementById("newHolidayName").value = "";
+            renderHolidayList();
+        }
+        function removeHoliday(date) {
+            holidays = holidays.filter(h => h.date !== date);
+            renderHolidayList();
+        }
+        document.getElementById("holidayModal").addEventListener("click", function (e) {
+            if (e.target === this) closeHolidayModal();
+        });
+
+        // =====================
+        // INDIVIDUAL DTR GENERATION
+        // =====================
+        let currentDTRData = null;
+
+        async function generateIndividualDTR() {
+            // Get the currently displayed month title to determine what's loaded
+            const titleText = document.getElementById("monthTitle").textContent;
+            if (!titleText) {
+                alert("Please generate or load a month first before generating individual DTR.");
+                return;
+            }
+
+            // Find the loaded month data
+            const savedMonths = await getSavedMonths();
+            let data = null;
+            for (const s of savedMonths) {
+                const check = monthNames[s.month] + " " + s.year;
+                if (check === titleText) {
+                    data = await loadMonthData(s.year, s.month);
+                    break;
+                }
+            }
+
+            if (!data) {
+                alert("Could not find saved data for the currently displayed month.");
+                return;
+            }
+
+            currentDTRData = data;
+            renderIndividualDTR(data);
+        }
+
+        function renderIndividualDTR(data) {
+            const container = document.getElementById("dtrIndividualContainer");
+            const mainContainer = document.getElementById("dtrContainer");
+            const monthTitleEl = document.getElementById("monthTitle");
+
+            // Hide main log book view
+            mainContainer.style.display = "none";
+            monthTitleEl.style.display = "none";
+
+            const year = data.year;
+            const month = data.month;
+            const lastDay = new Date(year, month + 1, 0).getDate();
+            const monthNameUpper = monthNames[month];
+
+            // Build a lookup: personName -> { day: { morningIn, morningOut, afternoonIn, afternoonOut } }
+            const personTimes = {};
+            names.forEach(name => { personTimes[name] = {}; });
+
+            data.days.forEach(dayData => {
+                const dayDate = new Date(dayData.isoDate + "T00:00:00");
+                const dayNum = dayDate.getDate();
+                dayData.rows.forEach(row => {
+                    if (personTimes[row.name] !== undefined) {
+                        personTimes[row.name][dayNum] = {
+                            morningIn: row.morningIn,
+                            morningOut: row.morningOut,
+                            afternoonIn: row.afternoonIn,
+                            afternoonOut: row.afternoonOut,
+                            holiday: row.holiday
+                        };
+                    }
+                });
+            });
+
+            // Holiday lookup by day number
+            const holidayByDay = {};
+            data.days.forEach(dayData => {
+                if (dayData.holidayName) {
+                    const d = new Date(dayData.isoDate + "T00:00:00");
+                    holidayByDay[d.getDate()] = dayData.holidayName;
+                }
+            });
+
+            // Define the two ranges
+            const ranges = [
+                { start: 1, end: 15, label: `${monthNameUpper} 1-15` },
+                { start: 16, end: lastDay, label: `${monthNameUpper} 16-${lastDay}` }
+            ];
+
+            let html = `<div class="dtr-view-controls">
+                <button class="btn-back" onclick="backToLogBook()">⬅ Back to Log Book</button>
+                <button class="btn-print" onclick="window.print()">🖨 Print DTR</button>
+            </div>`;
+
+            names.forEach(personName => {
+                ranges.forEach(range => {
+                    const singleSheet = buildDTRSheet(personName, year, month, range, personTimes[personName], holidayByDay, lastDay);
+                    // Wrap two identical copies in one page
+                    html += `<div class="dtr-page">${singleSheet}${singleSheet}</div>`;
+                });
+            });
+
+            container.innerHTML = html;
+        }
+
+        function buildDTRSheet(personName, year, month, range, timesMap, holidayByDay, lastDay) {
+            const monthNameUpper = monthNames[month];
+
+            let sheet = `<div class="dtr-sheet">`;
+            sheet += `<p class="dtr-title">DAILY TIME RECORD</p>`;
+            sheet += `<p class="dtr-deco">——oOo——</p>`;
+            sheet += `<div class="dtr-name-wrap"><span class="dtr-name">${personName}</span></div>`;
+            sheet += `<p class="dtr-name-label">(Name)</p>`;
+
+            sheet += `<div class="dtr-meta">`;
+            sheet += `<div class="dtr-meta-left"><span>For the month of</span> <span class="dtr-meta-month">${range.label}</span></div>`;
+            sheet += `<span>${year}</span>`;
+            sheet += `</div>`;
+
+            sheet += `<div class="dtr-office-hours">`;
+            sheet += `<span>Office hours for arrival and departure</span>`;
+            sheet += `<span>Regular days<br>Saturdays</span>`;
+            sheet += `</div>`;
+
+            // Table
+            sheet += `<table class="dtr-table">`;
+            sheet += `<thead>`;
+            sheet += `<tr>`;
+            sheet += `<th rowspan="2" class="day-col">Day</th>`;
+            sheet += `<th colspan="2">A.M.</th>`;
+            sheet += `<th colspan="2">P.M.</th>`;
+            sheet += `<th colspan="2">Undertime</th>`;
+            sheet += `</tr>`;
+            sheet += `<tr>`;
+            sheet += `<th class="time-col">Arrival</th>`;
+            sheet += `<th class="time-col">Departure</th>`;
+            sheet += `<th class="time-col">Arrival</th>`;
+            sheet += `<th class="time-col">Departure</th>`;
+            sheet += `<th class="under-col">Hours</th>`;
+            sheet += `<th class="under-col">Minutes</th>`;
+            sheet += `</tr>`;
+            sheet += `</thead><tbody>`;
+
+            // Always show rows 1-31, but only fill data for the active range
+            for (let day = 1; day <= 31; day++) {
+                const date = new Date(year, month, day);
+                const dayOfWeek = date.getDay();
+                const isValidDay = day <= lastDay;
+                const isInRange = day >= range.start && day <= range.end;
+
+                if (!isValidDay) {
+                    // Day doesn't exist in this month (e.g., Feb 29-31)
+                    sheet += `<tr><td>${day}</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`;
+                } else if (!isInRange) {
+                    // Day exists but is outside the active range — show blank
+                    sheet += `<tr><td>${day}</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`;
+                } else if (dayOfWeek === 6) {
+                    // Saturday
+                    sheet += `<tr><td>${day}</td><td colspan="6" class="weekend-label">SATURDAY</td></tr>`;
+                } else if (dayOfWeek === 0) {
+                    // Sunday
+                    sheet += `<tr><td>${day}</td><td colspan="6" class="weekend-label">SUNDAY</td></tr>`;
+                } else if (holidayByDay[day]) {
+                    // Holiday
+                    sheet += `<tr><td>${day}</td><td colspan="6" class="holiday-label">HOLIDAY</td></tr>`;
+                } else if (timesMap[day]) {
+                    // Working day with times
+                    const t = timesMap[day];
+                    sheet += `<tr>`;
+                    sheet += `<td>${day}</td>`;
+                    sheet += `<td class="handwritten-dtr">${formatDTRTime(t.morningIn)}</td>`;
+                    sheet += `<td class="handwritten-dtr">${formatDTRTime(t.morningOut)}</td>`;
+                    sheet += `<td class="handwritten-dtr">${formatDTRTime(t.afternoonIn)}</td>`;
+                    sheet += `<td class="handwritten-dtr">${formatDTRTime(t.afternoonOut)}</td>`;
+                    sheet += `<td></td><td></td>`;
+                    sheet += `</tr>`;
+                } else {
+                    // Working day but no data
+                    sheet += `<tr><td>${day}</td><td></td><td></td><td></td></tr>`;
+                }
+            }
+
+            // Total row
+            sheet += `<tr class="dtr-total-row"><td colspan="5" style="text-align:right;padding-right:10px;">Total</td><td></td><td></td></tr>`;
+
+            sheet += `</tbody></table>`;
+
+            // Certification
+            sheet += `<p class="dtr-certification">I certify on my honor that the above is a true and correct report on the hours of work<br>performed, record of which was made daily at the time of arrival and departure from<br>office.</p>`;
+
+            // Verified
+            sheet += `<p>_______________________________________________________________________</p>`;
+            sheet += `<p class="dtr-verified">VERIFIED as to the prescribed office hours</p>`;
+
+            // In charge
+            sheet += `<div class="dtr-incharge">`;
+            sheet += `<strong>CHARLYN S.GARGAR</strong>`;
+            sheet += `<em>Political Affairs Assistance II</em>`;
+            sheet += `</div>`;
+
+            sheet += `</div>`;
+            return sheet;
+        }
+
+        function formatDTRTime(timeStr) {
+            if (!timeStr || timeStr === '-') return '';
+            // Remove AM/PM and just show the time like in the image
+            return timeStr.replace(/ AM| PM/gi, '');
+        }
+
+        function backToLogBook() {
+            document.getElementById("dtrIndividualContainer").innerHTML = "";
+            document.getElementById("dtrContainer").style.display = "";
+            document.getElementById("monthTitle").style.display = "";
+        }
+
+        // =====================
+        // INIT
+        // =====================
+        initSelectors();
+
+        async function initDBAndLoad() {
+            await initSQLite();
+            await migrateToSQLite();
+            await renderSavedMonths();
+            const saved = await getSavedMonths();
+            if (saved.length > 0) {
+                const last = saved[saved.length - 1];
+                await loadSavedMonth(last.year, last.month);
+            }
+        }
+
+        initDBAndLoad();
+    </script>
+</body>
+
+</html>
